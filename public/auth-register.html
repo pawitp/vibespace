@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vibespace passkey registration</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }
+    input, button { font: inherit; padding: 0.55rem 0.6rem; border: 1px solid #bbb; border-radius: 8px; }
+    label { display: block; margin: 0.7rem 0; }
+    code { background: #f3f3f3; padding: 0.15rem 0.35rem; border-radius: 4px; }
+    #status { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Register passkey</h1>
+  <p>This one-time registration link is valid for up to 1 day and will be consumed after successful passkey registration.</p>
+  <label>Label (optional)<br /><input id="label" type="text" autocomplete="off" placeholder="MacBook / iPhone" /></label>
+  <p><button id="register" type="button">Create passkey</button></p>
+  <p id="status"></p>
+  <script>
+    const registrationToken = __REGISTER_TOKEN_JSON__;
+    const labelInput = document.getElementById("label");
+    const statusNode = document.getElementById("status");
+    const registerButton = document.getElementById("register");
+
+    registerButton.addEventListener("click", async () => {
+      setStatus("Requesting registration options...");
+      try {
+        const optionsRes = await fetch("/auth/passkey/register/options", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: registrationToken, label: labelInput.value.trim() })
+        });
+        if (!optionsRes.ok) {
+          const err = await safeJson(optionsRes);
+          setStatus(err.error || "Failed to request options.");
+          return;
+        }
+
+        const optionsJson = await optionsRes.json();
+        const publicKey = decodePublicKeyOptions(optionsJson.publicKey);
+        const credential = await navigator.credentials.create({ publicKey });
+        if (!credential) {
+          setStatus("No registration response.");
+          return;
+        }
+
+        setStatus("Saving credential...");
+        const verifyRes = await fetch("/auth/passkey/register/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            state: optionsJson.state,
+            credential: encodeRegistration(credential)
+          })
+        });
+        if (!verifyRes.ok) {
+          const err = await safeJson(verifyRes);
+          setStatus(err.error || "Registration failed.");
+          return;
+        }
+
+        setStatus("Passkey created. Redirecting to login...");
+        window.setTimeout(() => {
+          window.location.href = "/auth/login";
+        }, 700);
+      } catch (error) {
+        setStatus(String(error && error.message ? error.message : error));
+      }
+    });
+
+    function setStatus(message) {
+      statusNode.textContent = message;
+    }
+
+    function decodePublicKeyOptions(publicKey) {
+      return {
+        ...publicKey,
+        challenge: b64ToBuf(publicKey.challenge),
+        user: {
+          ...publicKey.user,
+          id: b64ToBuf(publicKey.user.id)
+        },
+        excludeCredentials: Array.isArray(publicKey.excludeCredentials)
+          ? publicKey.excludeCredentials.map((cred) => ({ ...cred, id: b64ToBuf(cred.id) }))
+          : []
+      };
+    }
+
+    function encodeRegistration(credential) {
+      const response = credential.response;
+      const authenticatorData = typeof response.getAuthenticatorData === "function"
+        ? response.getAuthenticatorData()
+        : null;
+      const publicKey = typeof response.getPublicKey === "function"
+        ? response.getPublicKey()
+        : null;
+      return {
+        id: credential.id,
+        type: credential.type,
+        rawId: bufToB64(credential.rawId),
+        response: {
+          clientDataJSON: bufToB64(response.clientDataJSON),
+          attestationObject: response.attestationObject ? bufToB64(response.attestationObject) : null,
+          authenticatorData: authenticatorData ? bufToB64(authenticatorData) : null,
+          publicKey: publicKey ? bufToB64(publicKey) : null,
+          publicKeyAlgorithm: typeof response.getPublicKeyAlgorithm === "function"
+            ? response.getPublicKeyAlgorithm()
+            : -7,
+          transports: typeof response.getTransports === "function"
+            ? response.getTransports()
+            : []
+        }
+      };
+    }
+
+    function bufToB64(buf) {
+      const bytes = new Uint8Array(buf);
+      let str = "";
+      for (let i = 0; i < bytes.length; i += 1) str += String.fromCharCode(bytes[i]);
+      return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+
+    function b64ToBuf(str) {
+      const padded = str.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((str.length + 3) % 4);
+      const raw = atob(padded);
+      const out = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
+      return out.buffer;
+    }
+
+    async function safeJson(res) {
+      try { return await res.json(); } catch { return { error: "Request failed" }; }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,808 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vibespace</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --text: #10213b;
+      --muted: #5a6b85;
+      --border: #d7e1f0;
+      --primary: #1e6cff;
+      --primary-strong: #1453ca;
+      --danger: #c73434;
+      --shadow: 0 10px 30px rgba(20, 33, 61, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 0% -10%, #d9e6ff 0%, transparent 60%),
+        radial-gradient(1100px 700px at 100% -30%, #e7f4ff 0%, transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .loading-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+    }
+
+    .loading-card {
+      width: min(420px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .spinner {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 3px solid #d2e0ff;
+      border-top-color: var(--primary);
+      margin: 0 auto 1rem;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-status {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+      letter-spacing: 0.2px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .muted {
+      color: var(--muted);
+      margin-bottom: 0;
+    }
+
+    .logout {
+      color: var(--primary-strong);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .app-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .app-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.8rem;
+      align-items: center;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 0.8rem;
+    }
+
+    .app-link {
+      font-weight: 600;
+      color: #15428f;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+
+    .app-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    button,
+    .btn-link {
+      border: 1px solid #b7c8e6;
+      border-radius: 999px;
+      min-height: 2.2rem;
+      padding: 0 0.9rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      line-height: 1.1;
+      cursor: pointer;
+      color: #203a63;
+      background: #ffffff;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    button:hover,
+    .btn-link:hover {
+      background: #edf4ff;
+      border-color: #8facd9;
+      color: #172b4a;
+    }
+
+    #new-app-button {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      padding: 0 1rem;
+    }
+
+    #new-app-button:hover {
+      background: var(--primary-strong);
+      border-color: var(--primary-strong);
+      color: #fff;
+    }
+
+    .secondary {
+      background: #1f5fa6;
+      border-color: #1f5fa6;
+      color: #fff;
+    }
+
+    .secondary:hover {
+      background: #184f89;
+      border-color: #184f89;
+      color: #fff;
+    }
+
+    .menu-wrap {
+      position: relative;
+    }
+
+    .menu-toggle {
+      list-style: none;
+      width: 2.2rem;
+      height: 2.2rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .menu-toggle::-webkit-details-marker {
+      display: none;
+    }
+
+    .menu-wrap[open] .menu-toggle {
+      background: #eef4ff;
+      border-color: #9fb9ea;
+    }
+
+    .menu-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 0.35rem);
+      z-index: 3;
+      min-width: 120px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 0.35rem;
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .menu-panel button {
+      width: 100%;
+      border-radius: 8px;
+      justify-content: flex-start;
+      min-height: 2rem;
+      padding: 0.35rem 0.55rem;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    .menu-panel button:hover {
+      background: #f3f7ff;
+      color: var(--text);
+      border: 0;
+    }
+
+    .menu-panel button[data-delete-app-id] {
+      color: #a02b2b;
+    }
+
+    .menu-panel button[data-delete-app-id]:hover {
+      background: #fff2f2;
+      color: #8f2323;
+    }
+
+    .error {
+      color: var(--danger);
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .empty {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .command-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 18, 35, 0.45);
+      padding: 1rem;
+      z-index: 20;
+    }
+
+    .command-modal.open {
+      display: flex;
+    }
+
+    .command-modal-card {
+      width: min(1040px, 100%);
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: min(88vh, 820px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .command-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+    }
+
+    .command-label {
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .command-help {
+      margin: 0.35rem 0 0.75rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .command-output {
+      width: 100%;
+      min-height: 340px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+      border: 1px solid #c8d6f0;
+      border-radius: 10px;
+      padding: 0.7rem;
+      resize: vertical;
+      background: #f7fbff;
+      flex: 1;
+    }
+
+    .command-actions {
+      margin-top: 0.7rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .command-actions button {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .command-actions button:hover {
+      background: var(--primary-strong);
+      border-color: var(--primary-strong);
+      color: #fff;
+    }
+
+    .link-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .link-btn:hover {
+      background: #eef4ff;
+      color: var(--text);
+    }
+
+    @media (max-width: 700px) {
+      .app-item {
+        grid-template-columns: 1fr;
+      }
+
+      .app-actions {
+        justify-content: flex-start;
+      }
+
+      .command-actions {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section id="loading-screen" class="loading-screen" aria-live="polite">
+    <div class="loading-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-status" class="loading-status">Loading apps...</p>
+    </div>
+  </section>
+
+  <main id="page" class="page" hidden>
+    <section class="panel">
+      <div class="top-row">
+        <div>
+          <h1>vibespace</h1>
+          <p class="muted">Private platform for personal vibe-coded utilities.</p>
+        </div>
+        <a class="logout" href="/auth/logout">Logout</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="top-row">
+        <h2>Applications</h2>
+        <button id="new-app-button" type="button">New app</button>
+      </div>
+      <ul id="app-list" class="app-list"></ul>
+      <p id="app-error" class="error" hidden></p>
+    </section>
+
+  </main>
+
+  <div id="command-modal" class="command-modal" role="dialog" aria-modal="true" aria-labelledby="command-label">
+    <div class="command-modal-card">
+      <div class="command-modal-head">
+        <p id="command-label" class="command-label">Agent command</p>
+        <button id="close-command-modal" class="link-btn" type="button">Close</button>
+      </div>
+      <p class="command-help">Copy and paste this command in your terminal.</p>
+      <textarea id="command-output" class="command-output" readonly></textarea>
+      <div class="command-actions">
+        <button id="copy-command" type="button">Copy command</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const RETRY_LIMIT = 3;
+    const RETRY_DELAY_MS = 700;
+
+    const loadingScreen = document.getElementById("loading-screen");
+    const loadingStatus = document.getElementById("loading-status");
+    const page = document.getElementById("page");
+    const appList = document.getElementById("app-list");
+    const appError = document.getElementById("app-error");
+    const newAppButton = document.getElementById("new-app-button");
+
+    const commandModal = document.getElementById("command-modal");
+    const commandLabel = document.getElementById("command-label");
+    const commandOutput = document.getElementById("command-output");
+    const closeCommandModal = document.getElementById("close-command-modal");
+    const copyCommand = document.getElementById("copy-command");
+
+    page.style.display = "none";
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function fetchAppsWithRetry() {
+      let lastError = null;
+      for (let attempt = 1; attempt <= RETRY_LIMIT; attempt += 1) {
+        loadingStatus.textContent = attempt === 1
+          ? "Loading apps..."
+          : `Loading apps... retry ${attempt - 1}/${RETRY_LIMIT - 1}`;
+
+        try {
+          const res = await fetch("/api/apps", { credentials: "include" });
+          if (!res.ok) {
+            lastError = new Error(`status ${res.status}`);
+          } else {
+            const data = await res.json();
+            return Array.isArray(data.apps) ? data.apps : [];
+          }
+        } catch (error) {
+          lastError = error;
+        }
+
+        if (attempt < RETRY_LIMIT) {
+          await sleep(RETRY_DELAY_MS);
+        }
+      }
+
+      throw lastError || new Error("Unknown error");
+    }
+
+    async function fetchAppsOnce() {
+      const res = await fetch("/api/apps", { credentials: "include" });
+      if (!res.ok) {
+        throw new Error(`status ${res.status}`);
+      }
+      const data = await res.json();
+      return Array.isArray(data.apps) ? data.apps : [];
+    }
+
+    async function issueToken() {
+      const res = await fetch("/auth/token", { credentials: "include" });
+      if (!res.ok) {
+        throw new Error("Failed to issue token");
+      }
+      const data = await res.json();
+      if (!data.token || typeof data.token !== "string") {
+        throw new Error("No token returned");
+      }
+      return data.token;
+    }
+
+    async function createApp(appId) {
+      const helloHtml = [
+        "<!doctype html>",
+        "<html>",
+        "<head>",
+        '  <meta charset="utf-8" />',
+        '  <meta name="viewport" content="width=device-width, initial-scale=1" />',
+        `  <title>${escapeHtml(appId)}</title>`,
+        "</head>",
+        "<body>",
+        `  <h1>Hello from ${escapeHtml(appId)}</h1>`,
+        "</body>",
+        "</html>"
+      ].join("\n");
+
+      const res = await fetch(`/api/apps/${encodeURIComponent(appId)}/html`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          html: helloHtml,
+          message: `create ${appId} hello page`
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`status ${res.status}`);
+      }
+    }
+
+    async function deleteApp(appId) {
+      const res = await fetch(`/api/apps/${encodeURIComponent(appId)}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+
+      if (!res.ok) {
+        throw new Error(`status ${res.status}`);
+      }
+    }
+
+    async function renameApp(fromAppId, toAppId) {
+      const res = await fetch(`/api/apps/${encodeURIComponent(fromAppId)}/rename`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({ to: toAppId })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        const error = data && typeof data.error === "string" ? data.error : `status ${res.status}`;
+        throw new Error(error);
+      }
+    }
+
+    function buildAgentCommand(appId, token) {
+      const escapedOrigin = shellEscape(window.location.origin);
+      const escapedToken = shellEscape(token);
+
+      return [
+        `printf '%s\\n' ${escapedToken} > token.txt`,
+        "chmod 600 token.txt",
+        `curl -fsSL ${escapedOrigin}/agent-template -H \"Authorization: Bearer $(cat token.txt)\" -o AGENTS.md`,
+        "ln -sf AGENTS.md CLAUDE.md",
+        `curl -fsSL ${escapedOrigin}/dev_server.js -H \"Authorization: Bearer $(cat token.txt)\" -o dev_server.js`,
+        "chmod +x dev_server.js",
+        `cat >> AGENTS.md <<'EOF'`,
+        "",
+        "## Local Session Context",
+        `- VIBESPACE_BASE_URL: ${window.location.origin}`,
+        `- VIBESPACE_APP_ID: ${appId}`,
+        "- VIBESPACE_TOKEN_FILE: token.txt",
+        "EOF",
+        ""
+      ].join("\n");
+    }
+
+    function shellEscape(value) {
+      return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+    }
+
+    function showCommandModal(title, command) {
+      commandLabel.textContent = title;
+      commandOutput.value = command;
+      commandModal.classList.add("open");
+      commandOutput.focus();
+      commandOutput.select();
+    }
+
+    function closeModal() {
+      commandModal.classList.remove("open");
+    }
+
+    async function handleAgentAction(appId) {
+      const title = `Edit ${appId} with agent`;
+      showCommandModal(title, "Issuing token...");
+
+      try {
+        const token = await issueToken();
+        const command = buildAgentCommand(appId, token);
+        commandOutput.value = command;
+        commandOutput.focus();
+        commandOutput.select();
+      } catch {
+        commandOutput.value = "Failed to issue token. Refresh page and try again.";
+      }
+    }
+
+    function renderApps(apps) {
+      if (apps.length === 0) {
+        appList.innerHTML = '<li><p class="empty">No apps yet.</p></li>';
+        return;
+      }
+
+      appList.innerHTML = apps
+        .map((appId) => {
+          const safeAppId = escapeHtml(appId);
+          const encodedAppId = encodeURIComponent(appId);
+          return [
+            '<li class="app-item">',
+            `  <span class="app-link">${safeAppId}</span>`,
+            '  <div class="app-actions">',
+            `    <a class="btn-link" href="/apps/${encodedAppId}">Open</a>`,
+            `    <button class="secondary" type="button" data-app-id="${encodedAppId}">Edit with agent</button>`,
+            '    <details class="menu-wrap">',
+            '      <summary class="menu-toggle" aria-label="More actions">☰</summary>',
+            '      <div class="menu-panel">',
+            `        <button type="button" data-rename-app-id="${encodedAppId}">Rename</button>`,
+            `        <button type="button" data-delete-app-id="${encodedAppId}">Delete</button>`,
+            "      </div>",
+            "    </details>",
+            "  </div>",
+            "</li>"
+          ].join("\n");
+        })
+        .join("\n");
+    }
+
+    function escapeHtml(input) {
+      return String(input)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    appList.addEventListener("click", (event) => {
+      const editButton = event.target.closest("button[data-app-id]");
+      if (editButton) {
+        const appIdEncoded = editButton.getAttribute("data-app-id");
+        if (!appIdEncoded) {
+          return;
+        }
+        const appId = decodeURIComponent(appIdEncoded);
+        handleAgentAction(appId);
+        return;
+      }
+
+      const renameButton = event.target.closest("button[data-rename-app-id]");
+      if (renameButton) {
+        const fromAppIdEncoded = renameButton.getAttribute("data-rename-app-id");
+        if (!fromAppIdEncoded) {
+          return;
+        }
+
+        const fromAppId = decodeURIComponent(fromAppIdEncoded);
+        const toAppIdRaw = window.prompt(`Rename app "${fromAppId}" to:`, fromAppId);
+        if (toAppIdRaw === null) {
+          return;
+        }
+
+        const toAppId = String(toAppIdRaw).trim();
+        if (!/^[A-Za-z0-9_-]+$/.test(toAppId)) {
+          appError.hidden = false;
+          appError.textContent = "Invalid app ID. Use letters, numbers, underscore, or hyphen.";
+          return;
+        }
+
+        renameButton.disabled = true;
+        renameButton.textContent = "Renaming...";
+        appError.hidden = true;
+
+        renameApp(fromAppId, toAppId)
+          .then(() => fetchAppsOnce())
+          .then((apps) => {
+            renderApps(apps);
+          })
+          .catch((error) => {
+            appError.hidden = false;
+            appError.textContent = `Failed to rename ${fromAppId}: ${error.message}.`;
+          })
+          .finally(() => {
+            renameButton.disabled = false;
+            renameButton.textContent = "Rename";
+          });
+        return;
+      }
+
+      const deleteButton = event.target.closest("button[data-delete-app-id]");
+      if (!deleteButton) {
+        return;
+      }
+
+      const appIdEncoded = deleteButton.getAttribute("data-delete-app-id");
+      if (!appIdEncoded) {
+        return;
+      }
+
+      const appId = decodeURIComponent(appIdEncoded);
+      const confirmed = window.confirm(`Delete app "${appId}"? This removes html and kv.`);
+      if (!confirmed) {
+        return;
+      }
+
+      deleteButton.disabled = true;
+      deleteButton.textContent = "Deleting...";
+      appError.hidden = true;
+
+      deleteApp(appId)
+        .then(() => fetchAppsOnce())
+        .then((apps) => {
+          renderApps(apps);
+        })
+        .catch(() => {
+          appError.hidden = false;
+          appError.textContent = `Failed to delete ${appId}.`;
+        })
+        .finally(() => {
+          deleteButton.disabled = false;
+          deleteButton.textContent = "Delete";
+        });
+    });
+
+    newAppButton.addEventListener("click", () => {
+      const appIdRaw = window.prompt("New app ID (letters, numbers, underscore, hyphen):", "");
+      if (appIdRaw === null) {
+        return;
+      }
+
+      const appId = String(appIdRaw).trim();
+      if (!/^[A-Za-z0-9_-]+$/.test(appId)) {
+        appError.hidden = false;
+        appError.textContent = "Invalid app ID. Use letters, numbers, underscore, or hyphen.";
+        return;
+      }
+
+      newAppButton.disabled = true;
+      newAppButton.textContent = "Creating...";
+      appError.hidden = true;
+
+      createApp(appId)
+        .then(() => fetchAppsOnce())
+        .then((apps) => {
+          renderApps(apps);
+        })
+        .catch(() => {
+          appError.hidden = false;
+          appError.textContent = `Failed to create ${appId}.`;
+        })
+        .finally(() => {
+          newAppButton.disabled = false;
+          newAppButton.textContent = "New app";
+        });
+    });
+
+    closeCommandModal.addEventListener("click", closeModal);
+    commandModal.addEventListener("click", (event) => {
+      if (event.target === commandModal) {
+        closeModal();
+      }
+    });
+
+    copyCommand.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(commandOutput.value);
+        copyCommand.textContent = "Copied";
+        setTimeout(() => {
+          copyCommand.textContent = "Copy command";
+        }, 900);
+      } catch {
+        commandOutput.focus();
+        commandOutput.select();
+      }
+    });
+
+    function showMainPage() {
+      loadingScreen.hidden = true;
+      loadingScreen.style.display = "none";
+      loadingScreen.setAttribute("aria-hidden", "true");
+      page.hidden = false;
+      page.style.display = "block";
+    }
+
+    (async () => {
+      try {
+        const apps = await fetchAppsWithRetry();
+        renderApps(apps);
+      } catch {
+        appError.hidden = false;
+        appError.textContent = "Failed to load apps after retries.";
+      } finally {
+        showMainPage();
+      }
+    })();
+  </script>
+</body>
+</html>

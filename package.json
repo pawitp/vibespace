@@ -1,0 +1,19 @@
+{
+  "name": "vibespace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "passkey:add": "node scripts/passkey-add.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.51.1"
+  },
+  "dependencies": {
+    "@passwordless-id/webauthn": "^2.3.4",
+    "@tsndr/cloudflare-worker-jwt": "^3.2.1",
+    "cookie": "^1.1.1"
+  }
+}
