@@ -53,6 +53,7 @@ Authenticated API routes (either bearer token OR logged-in browser session cooki
 - `PUT /api/assets`
 - `GET /api/assets/{assetId}`
 - `HEAD /api/assets/{assetId}`
+- `POST /api/proxy`
 
 When an app is loaded from vibespace (`/apps/{appId}`), app-side requests to `/api/*` can use the existing browser session cookie. No additional token handling is needed inside the app.
 
@@ -126,6 +127,24 @@ Response shape:
 ### `GET /api/assets/{assetId}`
 
 Returns the stored binary object with its original content type. Access requires authentication.
+
+### `POST /api/proxy`
+
+Fetches a third-party page and streams it back.
+
+Constraints:
+- Authentication required.
+- Only `https://` target URLs are allowed.
+- Localhost and private-network targets are blocked.
+- Intended for simple page fetches from app code.
+
+Request body must be JSON:
+
+```json
+{
+  "url": "https://example.com"
+}
+```
 
 ### `POST /api/apps/{appId}/rename`
 

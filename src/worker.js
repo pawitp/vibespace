@@ -1,6 +1,7 @@
 import { requireAuth } from "./lib/auth.js";
 import { json } from "./lib/http.js";
 import { handleApiGetAsset, handleApiPutAsset } from "./routes/assets.js";
+import { handleApiProxy } from "./routes/proxy.js";
 import { handleAgentTemplate, handleDevServerScript, handleIndex } from "./routes/static.js";
 import {
   handleLoginPage,
@@ -106,6 +107,10 @@ export default {
         const assetReadMatch = path.match(/^\/api\/assets\/([a-f0-9]{64})$/);
         if (assetReadMatch && (request.method === "GET" || request.method === "HEAD")) {
           return withSecurityHeaders(request, await handleApiGetAsset(env, assetReadMatch[1], request.method));
+        }
+
+        if (path === "/api/proxy" && request.method === "POST") {
+          return withSecurityHeaders(request, await handleApiProxy(request));
         }
 
         if (request.method === "GET" && path === "/api/apps") {

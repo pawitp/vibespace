@@ -66,6 +66,7 @@ function printHelp() {
     "Behavior:",
     "  - Serves local HTML at / and /apps/<app-id>",
     "  - Proxies GET/HEAD /api/assets/<asset-id> to upstream (authenticated)",
+    "  - Proxies POST /api/proxy with JSON body {\"url\":\"https://...\"} to upstream (authenticated)",
     "  - Provides only /api/apps/<app-id>/kv",
     "  - Loads KV from upstream on first read per app, then keeps KV in local memory",
     "  - PUT /kv updates only local memory (no write back to upstream)"
@@ -172,6 +173,40 @@ async function main() {
         return;
       }
 
+      if (pathname === "/api/proxy" && method === "POST") {
+        const token = await readToken(args.tokenFile);
+        const upstreamProxyUrl = new URL("/api/proxy", upstream);
+        const requestBody = await readRequestBody(req);
+        const upstreamHeaders = { authorization: `Bearer ${token}` };
+        const userAgent = req.headers["user-agent"];
+        if (typeof userAgent === "string" && userAgent) {
+          upstreamHeaders["user-agent"] = userAgent;
+        }
+        const contentType = req.headers["content-type"];
+        if (typeof contentType === "string" && contentType) {
+          upstreamHeaders["content-type"] = contentType;
+        } else {
+          upstreamHeaders["content-type"] = "application/json; charset=utf-8";
+        }
+        const accept = req.headers["accept"];
+        if (typeof accept === "string" && accept) {
+          upstreamHeaders.accept = accept;
+        }
+        const upstreamRes = await fetch(upstreamProxyUrl, {
+          method: "POST",
+          headers: upstreamHeaders,
+          body: requestBody
+        });
+
+        const responseHeaders = new Headers(upstreamRes.headers);
+        responseHeaders.delete("transfer-encoding");
+
+        const responseBody = Buffer.from(await upstreamRes.arrayBuffer());
+        res.writeHead(upstreamRes.status, Object.fromEntries(responseHeaders.entries()));
+        res.end(responseBody);
+        return;
+      }
+
       const kvMatch = pathname.match(/^\/api\/apps\/([a-zA-Z0-9_-]+)\/kv$/);
       if (kvMatch) {
         const apiAppId = kvMatch[1];
@@ -219,7 +254,9 @@ async function main() {
         writeText(
           res,
           404,
-          JSON.stringify({ error: "Only /api/apps/{appId}/kv and /api/assets/{assetId} are available in dev_server" }),
+          JSON.stringify({
+            error: "Only /api/apps/{appId}/kv, /api/assets/{assetId}, and /api/proxy are available in dev_server"
+          }),
           "application/json; charset=utf-8"
         );
         return;
@@ -239,7 +276,9 @@ async function main() {
   server.listen(args.port, args.host, () => {
     process.stdout.write(`dev_server listening on http://${args.host}:${args.port}\n`);
     process.stdout.write(`Serving local app at /apps/${args.appId}\n`);
-    process.stdout.write("Providing local /api/apps/{appId}/kv and proxied /api/assets/{assetId}\n");
+    process.stdout.write(
+      "Providing local /api/apps/{appId}/kv and proxied /api/assets/{assetId} + /api/proxy\n"
+    );
     process.stdout.write(`KV will be loaded from ${upstream.origin} only when cache is empty\n`);
   });
 }
