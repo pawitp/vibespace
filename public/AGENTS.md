@@ -75,41 +75,7 @@ node dev_server.js \
   --token-file "$VIBESPACE_TOKEN_FILE"
 ```
 
-Tell the user to open `http://127.0.0.1:8788/apps/$VIBESPACE_APP_ID` and verify images/assets load.
-
-## Using proxy API (`POST /api/proxy`)
-
-Use this API when app code needs to fetch a third-party web page.
-
-Rules:
-- URL must be provided in JSON body as `url`.
-- Target URL must be `https://` only.
-- Auth is required (bearer token for local agent/dev server; session cookie for logged-in browser app).
-- `User-Agent` is forwarded to target site.
-
-Example with bearer token:
-
-```bash
-curl -fsS -X POST "$VIBESPACE_BASE_URL/api/proxy" \
-  -H "Authorization: Bearer $(cat "$VIBESPACE_TOKEN_FILE")" \
-  -H "Content-Type: application/json" \
-  --data '{"url":"https://example.com"}'
-```
-
-Example from app code:
-
-```js
-async function fetchViaProxy(targetUrl) {
-  const res = await fetch("/api/proxy", {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: targetUrl })
-  });
-  if (!res.ok) throw new Error(`proxy fetch failed: ${res.status}`);
-  return await res.text();
-}
-```
+Tell the user to open `http://127.0.0.1:8788/apps/$VIBESPACE_APP_ID` and verify the behavior.
 
 ## Step 4: confirm with user
 
@@ -171,3 +137,37 @@ async function saveState(appId, nextState) {
 Important:
 - `PUT /kv` replaces the full object
 - No bearer token is required in browser app code when the user is already logged in.
+
+## Using proxy API (`POST /api/proxy`)
+
+Use this API when app code needs to fetch a third-party web page.
+
+Rules:
+- URL must be provided in JSON body as `url`.
+- Target URL must be `https://` only.
+- Auth is required (bearer token for local agent/dev server; session cookie for logged-in browser app).
+- `User-Agent` is forwarded to target site.
+
+Example with bearer token:
+
+```bash
+curl -fsS -X POST "$VIBESPACE_BASE_URL/api/proxy" \
+  -H "Authorization: Bearer $(cat "$VIBESPACE_TOKEN_FILE")" \
+  -H "Content-Type: application/json" \
+  --data '{"url":"https://example.com"}'
+```
+
+Example from app code:
+
+```js
+async function fetchViaProxy(targetUrl) {
+  const res = await fetch("/api/proxy", {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: targetUrl })
+  });
+  if (!res.ok) throw new Error(`proxy fetch failed: ${res.status}`);
+  return await res.text();
+}
+```
