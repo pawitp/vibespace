@@ -24,3 +24,7 @@ PASSKEY_ORIGIN = "https://<worker-hostname>"
 binding = "PASSKEYS_DB"
 database_name = "<d1-database-name>"
 database_id = "<d1-database-id>"
+
+[[r2_buckets]]
+binding = "ASSET_BLOBS"
+bucket_name = "<r2-asset-bucket-name>"

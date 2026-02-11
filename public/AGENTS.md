@@ -23,9 +23,10 @@ export VIBESPACE_TOKEN_FILE="<from Local Session Context>"
 ## Required workflow
 
 1. Download current app HTML to a local file.
-2. Test locally with `dev_server.js`.
-3. Ask the user to confirm upload.
-4. Upload from file with a commit message.
+2. Upload any new binary assets and update HTML references.
+3. Test locally with `dev_server.js`.
+4. Ask the user to confirm upload.
+5. Upload from file with a commit message.
 
 ## Step 1: download app HTML
 
@@ -35,9 +36,31 @@ curl -fsS "$VIBESPACE_BASE_URL/api/apps/$VIBESPACE_APP_ID/html" \
   -o app.html
 ```
 
-## Step 2: test locally with dev server
+## Step 2: upload assets (images) before testing
+
+Allowed upload content types:
+- `image/avif`
+- `image/gif`
+- `image/jpeg`
+- `image/png`
+- `image/svg+xml`
+- `image/webp`
+
+Upload an image and capture the returned `path`:
+
+```bash
+curl -fsS -X PUT "$VIBESPACE_BASE_URL/api/assets" \
+  -H "Authorization: Bearer $(cat "$VIBESPACE_TOKEN_FILE")" \
+  -H "Content-Type: image/png" \
+  --data-binary @./image.png
+```
+
+Then update `app.html` to reference that returned path (example: `/api/assets/<asset-id>`).
+
+## Step 3: test locally with dev server
 
 `dev_server.js` serves your local HTML file and exposes only `GET/PUT /api/apps/{appId}/kv`.
+It also proxies `GET/HEAD /api/assets/{assetId}` to upstream using your bearer token.
 KV behavior in dev server:
 - On first `GET /kv`, it loads KV from vibespace.
 - After that, KV is kept in local memory.
@@ -51,13 +74,13 @@ node dev_server.js \
   --token-file "$VIBESPACE_TOKEN_FILE"
 ```
 
-Tell the user to open `http://127.0.0.1:8788/apps/$VIBESPACE_APP_ID`.
+Tell the user to open `http://127.0.0.1:8788/apps/$VIBESPACE_APP_ID` and verify images/assets load.
 
-## Step 3: confirm with user
+## Step 4: confirm with user
 
 Before upload, summarize what changed and ask for confirmation. Always write a helpful commit message.
 
-## Step 4: upload local file with commit message
+## Step 5: upload local file with commit message
 
 ```bash
 COMMIT_MESSAGE="update $VIBESPACE_APP_ID html"
@@ -68,7 +91,7 @@ curl -fsS -X PUT "$VIBESPACE_BASE_URL/api/apps/$VIBESPACE_APP_ID/html" \
   --data-binary @./app.html
 ```
 
-## Step 5: clean up
+## Step 6: clean up
 
 If server is started in step 2, don't forget to kill it.
 

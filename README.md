@@ -3,6 +3,7 @@
 `vibespace` is a private Cloudflare Worker platform for personal vibe-coded utilities.
 
 - Utilities are stored as single-page HTML files in GitHub (`apps/<app-id>/index.html`)
+- Binary assets (for example images) are content-addressed and stored in Cloudflare R2
 - Per-app key/value state for each single-page app runtime is stored next to each app (`apps/<app-id>/kv.json`)
 - Data is managed through REST API and persisted via GitHub Contents API
 - Auth uses passkeys (WebAuthn) + short-lived bearer tokens (single-owner)
@@ -12,6 +13,7 @@
 
 - Runtime: Cloudflare Workers (serverless, low maintenance)
 - Storage: separate GitHub data repository (not this Worker repository)
+- Asset blob storage: Cloudflare R2 bucket (content-addressed by file bytes)
 - Auth credential storage: Cloudflare D1 (`PASSKEYS_DB`)
 - UI shell: static `public/index.html` served through authenticated Worker route
 - Auth flow:
@@ -48,6 +50,9 @@ Authenticated API routes (either bearer token OR logged-in browser session cooki
 - `PUT /api/apps/{appId}/html`
 - `GET /api/apps/{appId}/kv`
 - `PUT /api/apps/{appId}/kv`
+- `PUT /api/assets`
+- `GET /api/assets/{assetId}`
+- `HEAD /api/assets/{assetId}`
 
 When an app is loaded from vibespace (`/apps/{appId}`), app-side requests to `/api/*` can use the existing browser session cookie. No additional token handling is needed inside the app.
 
@@ -82,6 +87,45 @@ curl -sS -X PUT "https://<your-worker-domain>/api/apps/<app-id>/html" \
 ### `PUT /api/apps/{appId}/kv`
 
 Body must be a JSON object; it replaces the full per-app runtime state payload.
+
+### `PUT /api/assets`
+
+Uploads binary data and returns a stable content-based asset ID and path.
+
+Constraints:
+- Authentication required.
+- `Content-Type` is required and must be one of:
+  - `image/avif`
+  - `image/gif`
+  - `image/jpeg`
+  - `image/png`
+  - `image/svg+xml`
+  - `image/webp`
+- If the same bytes are uploaded again, the same asset ID/path is returned.
+
+Example:
+
+```bash
+curl -sS -X PUT "https://<your-worker-domain>/api/assets" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: image/png" \
+  --data-binary @./image.png
+```
+
+Response shape:
+
+```json
+{
+  "ok": true,
+  "assetId": "<asset-id>",
+  "contentType": "image/png",
+  "path": "/api/assets/<asset-id>"
+}
+```
+
+### `GET /api/assets/{assetId}`
+
+Returns the stored binary object with its original content type. Access requires authentication.
 
 ### `POST /api/apps/{appId}/rename`
 
@@ -133,19 +177,37 @@ database_name = "vibespace-passkeys"
 database_id = "<database-id-from-create-command>"
 ```
 
-4. Apply D1 migrations (creates `passkey_credentials` and `registration_tokens`):
+4. Create an R2 bucket for binary assets and bind it to `ASSET_BLOBS`:
+
+```bash
+npx wrangler r2 bucket create <r2-asset-bucket-name>
+```
+
+Then add the binding in `wrangler.toml`:
+
+```toml
+[[r2_buckets]]
+binding = "ASSET_BLOBS"
+bucket_name = "<r2-asset-bucket-name>"
+```
+
+5. Apply D1 migrations (creates `passkey_credentials` and `registration_tokens`):
 
 ```bash
 npx wrangler d1 migrations apply <d1-database-name> --remote
 ```
 
-5. Install dependencies:
+6. Install dependencies:
 
 ```bash
 npm install
 ```
 
-6. Configure Worker vars in `wrangler.toml` and with secrets:
+7. Configure Worker vars in `wrangler.toml` and with secrets:
+
+Required bindings:
+- `PASSKEYS_DB` (D1)
+- `ASSET_BLOBS` (R2)
 
 Required vars:
 - `GITHUB_DATA_OWNER`
@@ -166,19 +228,19 @@ wrangler secret put GITHUB_PAT
 wrangler secret put SESSION_SECRET
 ```
 
-7. Run locally:
+8. Run locally:
 
 ```bash
 npm run dev
 ```
 
-8. Deploy:
+9. Deploy:
 
 ```bash
 npm run deploy
 ```
 
-9. Bootstrap the first passkey:
+10. Bootstrap the first passkey:
 - Create a one-time registration token (default expiry is 24 hours):
 
 ```bash

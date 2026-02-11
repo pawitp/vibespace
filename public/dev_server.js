@@ -65,6 +65,7 @@ function printHelp() {
     "",
     "Behavior:",
     "  - Serves local HTML at / and /apps/<app-id>",
+    "  - Proxies GET/HEAD /api/assets/<asset-id> to upstream (authenticated)",
     "  - Provides only /api/apps/<app-id>/kv",
     "  - Loads KV from upstream on first read per app, then keeps KV in local memory",
     "  - PUT /kv updates only local memory (no write back to upstream)"
@@ -147,6 +148,30 @@ async function main() {
         return;
       }
 
+      const assetMatch = pathname.match(/^\/api\/assets\/([a-f0-9]{64})$/);
+      if (assetMatch && (method === "GET" || method === "HEAD")) {
+        const token = await readToken(args.tokenFile);
+        const assetUrl = new URL(pathname, upstream);
+        const upstreamRes = await fetch(assetUrl, {
+          method,
+          headers: { authorization: `Bearer ${token}` }
+        });
+
+        const responseHeaders = new Headers(upstreamRes.headers);
+        responseHeaders.delete("transfer-encoding");
+
+        if (method === "HEAD") {
+          res.writeHead(upstreamRes.status, Object.fromEntries(responseHeaders.entries()));
+          res.end();
+          return;
+        }
+
+        const body = Buffer.from(await upstreamRes.arrayBuffer());
+        res.writeHead(upstreamRes.status, Object.fromEntries(responseHeaders.entries()));
+        res.end(body);
+        return;
+      }
+
       const kvMatch = pathname.match(/^\/api\/apps\/([a-zA-Z0-9_-]+)\/kv$/);
       if (kvMatch) {
         const apiAppId = kvMatch[1];
@@ -194,7 +219,7 @@ async function main() {
         writeText(
           res,
           404,
-          JSON.stringify({ error: "Only /api/apps/{appId}/kv is available in dev_server" }),
+          JSON.stringify({ error: "Only /api/apps/{appId}/kv and /api/assets/{assetId} are available in dev_server" }),
           "application/json; charset=utf-8"
         );
         return;
@@ -214,7 +239,7 @@ async function main() {
   server.listen(args.port, args.host, () => {
     process.stdout.write(`dev_server listening on http://${args.host}:${args.port}\n`);
     process.stdout.write(`Serving local app at /apps/${args.appId}\n`);
-    process.stdout.write("Providing only /api/apps/{appId}/kv in local memory\n");
+    process.stdout.write("Providing local /api/apps/{appId}/kv and proxied /api/assets/{assetId}\n");
     process.stdout.write(`KV will be loaded from ${upstream.origin} only when cache is empty\n`);
   });
 }

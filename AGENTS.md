@@ -45,6 +45,7 @@
 ## Configuration expectations
 - Required bindings:
   - `PASSKEYS_DB` (Cloudflare D1)
+  - `ASSET_BLOBS` (Cloudflare R2)
 - Required non-secret vars:
   - `GITHUB_DATA_OWNER`
   - `GITHUB_DATA_REPO`
